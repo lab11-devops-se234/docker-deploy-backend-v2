@@ -1,13 +1,11 @@
-FROM node:22-alpine AS build-stage
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-ARG BUILD_MODE=production
-RUN npm run build -- --mode $BUILD_MODE
-# Production stage
-FROM nginx:alpine AS production-stage
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build-stage /app/dist /usr/share/nginx/html
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /app/target/backend.jar app.jar
 EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
